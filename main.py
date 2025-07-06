@@ -4,6 +4,7 @@ import tempfile
 import os
 import sys
 import io
+import urllib.parse
 
 app = Flask(__name__)
 
@@ -15,9 +16,19 @@ class OutputCapture:
     def get_value(self):
         return self.buffer.getvalue()
 
+def has_java():
+    try:
+        subprocess.run(['javac', '-version'], capture_output=True, check=True)
+        subprocess.run(['java', '-version'], capture_output=True, check=True)
+        return True
+    except:
+        return False
+
+JAVA_AVAILABLE = has_java()
+
 @app.route('/python', methods=['GET'])
 def eval_python():
-    code = request.args.get('code')
+    code = urllib.parse.unquote_plus(request.args.get('code', ''))
     if not code:
         return jsonify({'error': 'No code provided', 'console': ''}), 400
     
@@ -44,7 +55,13 @@ def eval_python():
 
 @app.route('/java', methods=['GET'])
 def eval_java():
-    code = request.args.get('code')
+    if not JAVA_AVAILABLE:
+        return jsonify({
+            'error': 'Java environment not available',
+            'console': ''
+        }), 500
+        
+    code = urllib.parse.unquote_plus(request.args.get('code', ''))
     if not code:
         return jsonify({'error': 'No code provided', 'console': ''}), 400
     
